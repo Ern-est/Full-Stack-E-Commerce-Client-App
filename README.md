@@ -106,6 +106,14 @@ Orders can be managed and viewed in real-time via the admin panel.
 Contributions
 Contributions are welcome! Please open an issue or submit a pull request for enhancements or bug fixes.
 
+## Important Note
+
+⚠️ Some sensitive configuration files, such as `lib/core/config.dart` and `.env`, are **not included in this repository** for security reasons.  
+
+This means that if you clone this repo, the **UI and structure will be visible**, but the app **won't fully run** because Supabase keys and other secrets are missing.  
+
+To get the full working version with backend integration, **please contact the project owner**.
+
 
 
 
