@@ -115,8 +115,12 @@ This means that if you clone this repo, the **UI and structure will be visible**
 To get the full working version with backend integration, **please contact the project owner**.
 
 
+<img width="576" height="1057" alt="home_mobile" src="https://github.com/user-attachments/assets/6a05d1a9-17f3-489b-b180-07b835c360ca" />
+<img width="513" height="1057" alt="detail_mobile" src="https://github.com/user-attachments/assets/ad1c866e-a558-4c0c-a3be-699d683815ee" />
+<img width="568" height="1057" alt="related_mobile" src="https://github.com/user-attachments/assets/60b85338-fce1-43dc-a7e1-4f6d33197c93" />
+<img width="680" height="1057" alt="cart_mobile" src="https://github.com/user-attachments/assets/aac27bac-270c-43e6-86ba-6f6935047879" />
+<img width="555" height="1057" alt="profile_mobile" src="https://github.com/user-attachments/assets/34fd0b53-2b32-4ab4-8706-814b0d2d720e" />
+<img width="1585" height="892" alt="client_home_desktop" src="https://github.com/user-attachments/assets/d9bb76ab-282a-4ab8-92fc-6064f517ab48" />
+<img width="1589" height="892" alt="client_cart_desktop" src="https://github.com/user-attachments/assets/8e640b92-fda2-4278-a8a3-e86787e7058d" />
+<img width="1589" height="892" alt="client_detail_desktop" src="https://github.com/user-attachments/assets/4cde78d1-cfdc-4477-a5f1-841e86c05116" />
 
-
-
-License
-MIT License © [Your Name]
