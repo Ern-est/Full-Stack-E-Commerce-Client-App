@@ -16,7 +16,26 @@ class CheckoutPage extends ConsumerWidget {
       appBar: AppBar(title: const Text('Checkout')),
       body: Stepper(
         currentStep: state.step,
-        onStepContinue: notifier.nextStep,
+        onStepContinue: () async {
+          if (state.step < 2) {
+            notifier.nextStep();
+          } else {
+            // Final step (Payment step)
+            if (state.paymentMethod == 'COD') {
+              try {
+                await notifier.placeOrder();
+
+                if (context.mounted) {
+                  Navigator.pop(context, true);
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text(e.toString())));
+              }
+            }
+          }
+        },
         onStepCancel: notifier.previousStep,
         steps: [
           Step(
