@@ -20,25 +20,87 @@ class OrderConfirmationPage extends StatefulWidget {
 class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
   final supabase = Supabase.instance.client;
 
-  /// Matches EXACT database enum
+  /// ==============================
+  /// CANCEL ORDER FUNCTION
+  /// ==============================
+  Future<void> cancelOrder(String reason) async {
+    await supabase
+        .from('orders')
+        .update({
+          'order_status': 'cancelled',
+          'cancelled_by': 'client',
+          'cancel_reason': reason,
+          'cancelled_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', widget.orderId);
+  }
+
+  /// ==============================
+  /// CANCEL DIALOG
+  /// ==============================
+  void showCancelDialog() {
+    final controller = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        title: const Text("Cancel Order"),
+        content: TextField(
+          controller: controller,
+          maxLines: 3,
+          decoration: const InputDecoration(
+            hintText: "Enter cancellation reason",
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Back"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              if (controller.text.trim().isEmpty) return;
+
+              await cancelOrder(controller.text.trim());
+
+              Navigator.pop(context);
+            },
+            child: const Text("Confirm Cancel"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// ==============================
+  /// STEP TRACKER
+  /// ==============================
   int getCurrentStep(String status) {
     const statusOrder = ['pending', 'processing', 'shipped', 'delivered'];
-
     return statusOrder.indexOf(status);
   }
 
   Widget buildTimeline(String status) {
     if (status == 'cancelled') {
-      return const Center(
-        child: Text(
-          "This order was cancelled",
-          style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-        ),
+      return Column(
+        children: const [
+          Icon(Icons.cancel, color: Colors.red, size: 50),
+          SizedBox(height: 10),
+          Text(
+            "This order was cancelled",
+            style: TextStyle(
+              color: Colors.red,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+        ],
       );
     }
 
     final steps = ['Pending', 'Processing', 'Shipped', 'Delivered'];
-
     final currentStep = getCurrentStep(status);
 
     return Row(
@@ -67,6 +129,9 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
     );
   }
 
+  /// ==============================
+  /// UI BUILD
+  /// ==============================
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
@@ -87,8 +152,10 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
             final order = orderSnapshot.data!.first;
 
             final status = order['order_status'] ?? 'pending';
-
             final total = order['total_amount'] ?? 0;
+
+            final cancelledBy = order['cancelled_by'];
+            final cancelReason = order['cancel_reason'];
 
             return FutureBuilder(
               future: supabase
@@ -122,6 +189,33 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
                       buildTimeline(status),
                       const SizedBox(height: 20),
 
+                      /// CANCELLATION REASON
+                      if (status == 'cancelled' && cancelReason != null)
+                        Card(
+                          color: const Color(0xFF2A0000),
+                          margin: const EdgeInsets.only(bottom: 20),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Cancelled by: ${cancelledBy ?? 'Unknown'}",
+                                  style: const TextStyle(
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  cancelReason,
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
                       /// PAYMENT METHOD
                       Card(
                         color: const Color(0xFF1E1E1E),
@@ -148,7 +242,7 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
                       ),
                       const SizedBox(height: 12),
 
-                      /// ORDER ITEMS LIST
+                      /// ORDER ITEMS
                       ...items.map(
                         (item) => Card(
                           color: const Color(0xFF1E1E1E),
@@ -167,7 +261,7 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
 
                       const SizedBox(height: 20),
 
-                      /// TOTAL FROM ORDERS TABLE
+                      /// TOTAL
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -187,6 +281,25 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
                           ),
                         ],
                       ),
+
+                      const SizedBox(height: 30),
+
+                      /// CANCEL BUTTON (ONLY IF PENDING)
+                      if (status == 'pending')
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            onPressed: showCancelDialog,
+                            child: const Text(
+                              "Cancel Order",
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 );
