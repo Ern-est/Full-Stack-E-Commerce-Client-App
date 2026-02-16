@@ -42,7 +42,6 @@ class CheckoutState {
 }
 
 /// NOTIFIER
-/// NOTIFIER
 class CheckoutNotifier extends StateNotifier<CheckoutState> {
   final Ref ref;
   CheckoutNotifier(this.ref) : super(CheckoutState());
@@ -81,10 +80,13 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
     state = CheckoutState();
   }
 
-  /// PLACE ORDER IN SUPABASE (RLS-SAFE)
+  /// ✅ PLACE ORDER (CLEAN + SAFE)
   Future<Map<String, dynamic>> placeOrder() async {
     final cart = ref.read(cartProvider);
-    if (cart.isEmpty) throw Exception('Cart is empty');
+
+    if (cart.isEmpty) {
+      throw Exception('Cart is empty');
+    }
 
     final supabase = Supabase.instance.client;
     final user = supabase.auth.currentUser;
@@ -94,18 +96,16 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
     }
 
     final String clientId = user.id;
-    print('💡 Authenticated user ID: $clientId');
 
     try {
-      // ✅ Ensure client exists
-      final clientResp = await supabase
+      /// 1️⃣ Ensure client exists
+      final existingClient = await supabase
           .from('clients')
           .select('id')
           .eq('id', clientId)
           .maybeSingle();
 
-      if (clientResp == null) {
-        print('💡 Client not found, creating a new row...');
+      if (existingClient == null) {
         await supabase.from('clients').insert({
           'id': clientId,
           'name': state.name.isEmpty ? 'No Name' : state.name,
@@ -113,19 +113,16 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
           'email': user.email,
           'created_at': DateTime.now().toIso8601String(),
         });
-        print('💡 Client row created successfully.');
-      } else {
-        print('💡 Client already exists: ${clientResp['id']}');
       }
 
-      // 1️⃣ Insert order (RLS-safe)
+      /// 2️⃣ Insert order
       final insertedOrder = await supabase
           .from('orders')
           .insert({
             'client_id': clientId,
             'total_amount': cart.fold<double>(
               0,
-              (sum, i) => sum + i.product.displayPrice * i.quantity,
+              (sum, item) => sum + (item.product.displayPrice * item.quantity),
             ),
             'payment_method': state.paymentMethod,
             'payment_status': state.paymentMethod == 'COD'
@@ -136,43 +133,37 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
             'created_at': DateTime.now().toIso8601String(),
           })
           .select()
-          .single();
+          .single(); // 🔥 RETURNS MAP
 
-      final String orderId = insertedOrder['id'];
-      print('💡 Order inserted successfully: $orderId');
+      final String orderId = insertedOrder['id'].toString();
 
-      // 2️⃣ Insert order items
-      final orderItems = cart
-          .map(
-            (item) => {
-              'order_id': orderId,
-              'product_id': item.product.id,
-              'quantity': item.quantity,
-              'unit_price': item.product.displayPrice,
-              'total_price': item.product.displayPrice * item.quantity,
-              'variant': item.selectedVariant,
-              'created_at': DateTime.now().toIso8601String(),
-            },
-          )
-          .toList();
+      /// 3️⃣ Insert order items
+      final orderItems = cart.map((item) {
+        return {
+          'order_id': orderId,
+          'product_id': item.product.id,
+          'quantity': item.quantity,
+          'unit_price': item.product.displayPrice,
+          'total_price': item.product.displayPrice * item.quantity,
+          'variant': item.selectedVariant,
+          'created_at': DateTime.now().toIso8601String(),
+        };
+      }).toList();
 
       await supabase.from('order_items').insert(orderItems);
-      print('💡 Order items inserted successfully.');
 
-      // 3️⃣ Clear cart
-      ref.read(cartProvider.notifier).clearCart();
-
-      // 4️⃣ Return order with items
+      /// 4️⃣ Fetch full order with items
       final orderWithItems = await supabase
           .from('orders')
           .select('*, order_items(*)')
           .eq('id', orderId)
           .single();
 
-      print('💡 Returning order with items.');
+      /// 5️⃣ Clear cart AFTER everything succeeds
+      ref.read(cartProvider.notifier).clearCart();
+
       return orderWithItems;
-    } catch (e, st) {
-      print('❌ Failed to create order: $e\n$st');
+    } catch (e) {
       throw Exception('Failed to create order: $e');
     }
   }

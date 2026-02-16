@@ -14,6 +14,7 @@ class PaymentSelection extends ConsumerStatefulWidget {
 class _PaymentSelectionState extends ConsumerState<PaymentSelection> {
   late String selectedPayment;
   bool isPaying = false;
+  RealtimeChannel? orderChannel;
 
   @override
   void initState() {
@@ -22,15 +23,46 @@ class _PaymentSelectionState extends ConsumerState<PaymentSelection> {
     selectedPayment = checkout.paymentMethod;
   }
 
+  @override
+  void dispose() {
+    orderChannel?.unsubscribe();
+    super.dispose();
+  }
+
   String formatPhoneNumber(String phone) {
     if (phone.startsWith('0')) return '254${phone.substring(1)}';
     if (phone.startsWith('7')) return '254$phone';
     return phone;
   }
 
+  Future<String?> showPhoneDialog(double amount) async {
+    final controller = TextEditingController();
+
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Enter MPESA Phone"),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.phone,
+          decoration: const InputDecoration(hintText: "07XXXXXXXX"),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: Text("Pay Ksh ${amount.toStringAsFixed(0)}"),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> payWithMpesa() async {
     final checkoutNotifier = ref.read(checkoutProvider.notifier);
-    final checkout = ref.read(checkoutProvider);
     final cart = ref.read(cartProvider);
 
     if (cart.isEmpty) {
@@ -38,58 +70,110 @@ class _PaymentSelectionState extends ConsumerState<PaymentSelection> {
       return;
     }
 
+    final totalAmount = cart.fold<double>(
+      0,
+      (sum, item) => sum + (item.product.displayPrice * item.quantity),
+    );
+
+    final phoneInput = await showPhoneDialog(totalAmount);
+    if (phoneInput == null || phoneInput.isEmpty) return;
+
+    final formattedPhone = formatPhoneNumber(phoneInput);
+
     setState(() => isPaying = true);
 
     try {
-      // 1️⃣ Place order and get the inserted order (with UUID)
+      // 1️⃣ Place the order
       final insertedOrder = await checkoutNotifier.placeOrder();
-      final String orderId = insertedOrder['id'];
+      final String orderId = insertedOrder['id'].toString();
 
-      // 2️⃣ Compute total amount
-      final amount = cart
-          .fold<double>(
-            0,
-            (sum, item) => sum + (item.product.displayPrice * item.quantity),
-          )
-          .ceil();
+      // 2️⃣ Test function reachability first
+      try {
+        await Supabase.instance.client.functions.invoke(
+          'mpesa-b2b',
+          body: {'test': true},
+        );
+      } catch (e) {
+        _toast("MPESA function unreachable. Check project URL / slug.");
+        return;
+      }
 
-      // 3️⃣ Format phone number
-      final phone = formatPhoneNumber(checkout.phone);
-
-      // 4️⃣ Initiate MPESA payment
+      // 3️⃣ Initiate MPESA STK push
       final response = await Supabase.instance.client.functions.invoke(
-        'mpesa-b2b/initiate',
+        'mpesa-b2b',
         body: {
-          'amount': amount,
-          'partyA': phone,
-          'accountRef': orderId, // Use the real UUID
-          'remarks': 'Payment for Order $orderId',
+          'amount': totalAmount.ceil(),
+          'phone': formattedPhone,
+          'orderId': orderId,
           'callbackUrl':
-              'https://xnknxlkebtvbiauvazly.supabase.co/functions/v1/mpesa-b2b/callback',
+              'https://xnknxlkebtvbiauvazly.supabase.co/functions/v1/mpesa-b2b',
         },
       );
 
       final data = response.data;
-
-      if (data == null) throw Exception('Empty MPESA response');
-
-      final respCode = data['ResponseCode']?.toString() ?? '-1';
-      final respMsg =
-          data['CustomerMessage'] ??
-          data['ResponseDescription'] ??
-          'Payment failed';
-
-      if (respCode == '0') {
-        _toast('MPESA prompt sent. Enter your PIN.');
-      } else {
-        _toast('Error: $respMsg');
+      if (data == null || data['ResponseCode'] != '0') {
+        _toast("Payment initiation failed!");
+        return;
       }
+
+      // 4️⃣ Show waiting dialog
+      _showWaitingDialog();
+
+      // 5️⃣ Listen to order updates
+      _listenToOrder(orderId);
     } catch (e, st) {
       debugPrint('MPESA error: $e\n$st');
-      _toast('Payment failed. Try again.');
+      _toast("Payment initiation failed!");
     } finally {
       setState(() => isPaying = false);
     }
+  }
+
+  void _showWaitingDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text("Waiting for MPESA confirmation..."),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _listenToOrder(String orderId) {
+    final supabase = Supabase.instance.client;
+
+    final filter = PostgresChangeFilter(
+      type: PostgresChangeFilterType.eq,
+      column: 'id',
+      value: orderId,
+    );
+
+    orderChannel = supabase
+        .channel('order-$orderId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'orders',
+          filter: filter,
+          callback: (payload) {
+            final newRecord = payload.newRecord;
+            if (newRecord['payment_status'] == 'paid') {
+              Navigator.pop(context);
+              _toast("Payment successful 🎉");
+            } else if (newRecord['payment_status'] == 'failed') {
+              Navigator.pop(context);
+              _toast("Payment failed. Try again.");
+            }
+          },
+        )
+        .subscribe();
   }
 
   void _toast(String msg) {
