@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -14,18 +16,21 @@ class PaymentSelection extends ConsumerStatefulWidget {
 class _PaymentSelectionState extends ConsumerState<PaymentSelection> {
   late String selectedPayment;
   bool isPaying = false;
+  bool _paymentHandled = false;
+
   RealtimeChannel? orderChannel;
+  Timer? _pollingTimer;
+  Timer? _timeoutTimer;
 
   @override
   void initState() {
     super.initState();
-    final checkout = ref.read(checkoutProvider);
-    selectedPayment = checkout.paymentMethod;
+    selectedPayment = ref.read(checkoutProvider).paymentMethod;
   }
 
   @override
   void dispose() {
-    orderChannel?.unsubscribe();
+    _cleanupRealtimeAndPolling();
     super.dispose();
   }
 
@@ -37,7 +42,6 @@ class _PaymentSelectionState extends ConsumerState<PaymentSelection> {
 
   Future<String?> showPhoneDialog(double amount) async {
     final controller = TextEditingController();
-
     return showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
@@ -81,49 +85,65 @@ class _PaymentSelectionState extends ConsumerState<PaymentSelection> {
     final formattedPhone = formatPhoneNumber(phoneInput);
 
     setState(() => isPaying = true);
+    _paymentHandled = false;
 
     try {
-      // 1️⃣ Place the order
+      /// 1️⃣ Insert order
       final insertedOrder = await checkoutNotifier.placeOrder();
-      final String orderId = insertedOrder['id'].toString();
+      final orderId = insertedOrder['id'];
 
-      // 2️⃣ Test function reachability first
-      try {
-        await Supabase.instance.client.functions.invoke(
-          'mpesa-b2b',
-          body: {'test': true},
-        );
-      } catch (e) {
-        _toast("MPESA function unreachable. Check project URL / slug.");
-        return;
-      }
-
-      // 3️⃣ Initiate MPESA STK push
+      /// 2️⃣ Call Edge Function
       final response = await Supabase.instance.client.functions.invoke(
         'mpesa-b2b',
         body: {
           'amount': totalAmount.ceil(),
           'phone': formattedPhone,
-          'orderId': orderId,
+          'orderId': orderId, // guaranteed UUID string
           'callbackUrl':
-              'https://xnknxlkebtvbiauvazly.supabase.co/functions/v1/mpesa-b2b',
+              'https://xnknxlkebtvbiauvazly.supabase.co/functions/v1/mpesa-b2b/callback',
         },
       );
 
-      final data = response.data;
-      if (data == null || data['ResponseCode'] != '0') {
+      final raw = response.data;
+      Map<String, dynamic> data;
+
+      if (raw is String) {
+        data = jsonDecode(raw);
+      } else if (raw is Map) {
+        data = Map<String, dynamic>.from(raw);
+      } else {
+        _toast("Unexpected payment response format");
+        return;
+      }
+
+      if (data['ResponseCode'] != '0') {
         _toast("Payment initiation failed!");
         return;
       }
 
-      // 4️⃣ Show waiting dialog
+      final checkoutRequestId = data['CheckoutRequestID'];
+      if (checkoutRequestId == null) {
+        _toast("Missing CheckoutRequestID");
+        return;
+      }
+
       _showWaitingDialog();
 
-      // 5️⃣ Listen to order updates
-      _listenToOrder(orderId);
+      _listenToOrder(checkoutRequestId.toString());
+      _startPollingFallback(checkoutRequestId.toString());
+
+      _timeoutTimer?.cancel();
+      _timeoutTimer = Timer(const Duration(seconds: 60), () {
+        if (!_paymentHandled) {
+          _toast("Payment still pending. Check your MPESA app.");
+          _cleanupRealtimeAndPolling();
+          if (Navigator.canPop(context)) Navigator.pop(context);
+        }
+      });
     } catch (e, st) {
-      debugPrint('MPESA error: $e\n$st');
-      _toast("Payment initiation failed!");
+      debugPrint("MPESA ERROR: $e");
+      debugPrint("$st");
+      _toast("MPESA unreachable");
     } finally {
       setState(() => isPaying = false);
     }
@@ -146,34 +166,100 @@ class _PaymentSelectionState extends ConsumerState<PaymentSelection> {
     );
   }
 
-  void _listenToOrder(String orderId) {
+  /// 🔥 REALTIME LISTENER (ignores pending)
+  void _listenToOrder(String checkoutRequestId) {
     final supabase = Supabase.instance.client;
 
     final filter = PostgresChangeFilter(
       type: PostgresChangeFilterType.eq,
-      column: 'id',
-      value: orderId,
+      column: 'mpesa_checkout_request_id',
+      value: checkoutRequestId,
     );
 
     orderChannel = supabase
-        .channel('order-$orderId')
+        .channel('order-$checkoutRequestId')
         .onPostgresChanges(
           event: PostgresChangeEvent.update,
           schema: 'public',
           table: 'orders',
           filter: filter,
           callback: (payload) {
-            final newRecord = payload.newRecord;
-            if (newRecord['payment_status'] == 'paid') {
-              Navigator.pop(context);
-              _toast("Payment successful 🎉");
-            } else if (newRecord['payment_status'] == 'failed') {
-              Navigator.pop(context);
-              _toast("Payment failed. Try again.");
+            final status = payload.newRecord['payment_status']
+                ?.toString()
+                .toLowerCase();
+
+            debugPrint("Realtime update: status=$status");
+
+            if (status == 'paid' || status == 'failed') {
+              _handlePaymentUpdate(payload.newRecord);
             }
           },
         )
         .subscribe();
+  }
+
+  /// 🔁 POLLING FALLBACK
+  void _startPollingFallback(String checkoutRequestId) {
+    final supabase = Supabase.instance.client;
+
+    _pollingTimer?.cancel();
+    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
+      try {
+        final res = await supabase
+            .from('orders')
+            .select()
+            .eq('mpesa_checkout_request_id', checkoutRequestId)
+            .maybeSingle();
+
+        if (res == null) return;
+
+        final status =
+            res['payment_status']?.toString().toLowerCase() ?? 'pending';
+
+        debugPrint("Polling status: $status");
+
+        if (status == 'paid' || status == 'failed') {
+          _handlePaymentUpdate(res);
+        }
+      } catch (e) {
+        debugPrint("Polling error: $e");
+      }
+    });
+  }
+
+  /// 🎯 HANDLE STATUS UPDATE SAFELY
+  void _handlePaymentUpdate(Map<String, dynamic> record) {
+    if (_paymentHandled) return;
+
+    final status = record['payment_status']?.toString().toLowerCase();
+    final orderId = record['id'];
+
+    if (status == null || status == 'pending') return;
+
+    _paymentHandled = true;
+
+    debugPrint("Final payment status for $orderId: $status");
+
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    }
+
+    if (status == 'paid') {
+      _toast("Payment successful 🎉");
+    } else if (status == 'failed') {
+      _toast("Payment failed.");
+    }
+
+    _cleanupRealtimeAndPolling();
+  }
+
+  void _cleanupRealtimeAndPolling() {
+    orderChannel?.unsubscribe();
+    _pollingTimer?.cancel();
+    _timeoutTimer?.cancel();
+    orderChannel = null;
+    _pollingTimer = null;
+    _timeoutTimer = null;
   }
 
   void _toast(String msg) {
@@ -184,44 +270,58 @@ class _PaymentSelectionState extends ConsumerState<PaymentSelection> {
   Widget build(BuildContext context) {
     final notifier = ref.read(checkoutProvider.notifier);
     final cart = ref.watch(cartProvider);
+
     final totalAmount = cart.fold<double>(
       0,
       (sum, item) => sum + (item.product.displayPrice * item.quantity),
     );
 
+    final bool isCartEmpty = cart.isEmpty;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Text(
+          'Total: Ksh ${totalAmount.toStringAsFixed(2)}',
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 16),
         ListTile(
           title: const Text('MPESA'),
-          subtitle: Text('Total: Ksh ${totalAmount.toStringAsFixed(2)}'),
           leading: Radio<String>(
             value: 'MPESA',
             groupValue: selectedPayment,
             onChanged: (value) {
-              setState(() => selectedPayment = value!);
-              notifier.updatePayment(value!);
+              if (value == null) return;
+              setState(() => selectedPayment = value);
+              notifier.updatePayment(value);
             },
           ),
         ),
         ListTile(
           title: const Text('Cash on Delivery'),
-          subtitle: Text('Total: Ksh ${totalAmount.toStringAsFixed(2)}'),
           leading: Radio<String>(
             value: 'COD',
             groupValue: selectedPayment,
-            onChanged: (value) {
+            onChanged: (value) async {
+              if (isCartEmpty) {
+                _toast("Cart is empty");
+                return;
+              }
+
               setState(() => selectedPayment = value!);
               notifier.updatePayment(value!);
+              await notifier.placeOrder();
+              _toast("Order placed successfully!");
             },
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
         if (selectedPayment == 'MPESA')
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: isPaying ? null : payWithMpesa,
+              onPressed: (isPaying || isCartEmpty) ? null : payWithMpesa,
               child: isPaying
                   ? const SizedBox(
                       height: 20,

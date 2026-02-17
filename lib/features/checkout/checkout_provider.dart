@@ -80,7 +80,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
     state = CheckoutState();
   }
 
-  /// ✅ PLACE ORDER (CLEAN + SAFE)
+  /// ✅ PLACE ORDER (FULL DEBUG + SAFE)
   Future<Map<String, dynamic>> placeOrder() async {
     final cart = ref.read(cartProvider);
 
@@ -106,13 +106,20 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
           .maybeSingle();
 
       if (existingClient == null) {
-        await supabase.from('clients').insert({
-          'id': clientId,
-          'name': state.name.isEmpty ? 'No Name' : state.name,
-          'phone': state.phone,
-          'email': user.email,
-          'created_at': DateTime.now().toIso8601String(),
-        });
+        debugPrint('Client does not exist. Creating new client...');
+        final clientInsert = await supabase
+            .from('clients')
+            .insert({
+              'id': clientId,
+              'name': state.name.isEmpty ? 'No Name' : state.name,
+              'phone': state.phone,
+              'email': user.email,
+              'created_at': DateTime.now().toIso8601String(),
+            })
+            .select()
+            .maybeSingle();
+
+        debugPrint('Inserted client: $clientInsert');
       }
 
       /// 2️⃣ Insert order
@@ -125,17 +132,22 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
               (sum, item) => sum + (item.product.displayPrice * item.quantity),
             ),
             'payment_method': state.paymentMethod,
-            'payment_status': state.paymentMethod == 'COD'
-                ? 'pending'
-                : 'unpaid',
+            'payment_status': 'pending',
             'delivery_address': state.address,
             'notes': 'Order placed via app',
             'created_at': DateTime.now().toIso8601String(),
           })
           .select()
-          .single(); // 🔥 RETURNS MAP
+          .single();
 
-      final String orderId = insertedOrder['id'].toString();
+      debugPrint('Inserted order: $insertedOrder');
+
+      final orderIdRaw = insertedOrder['id'];
+      if (orderIdRaw == null || orderIdRaw.toString().isEmpty) {
+        throw Exception('Inserted order has no ID! Cannot proceed.');
+      }
+      final String orderId = orderIdRaw.toString();
+      debugPrint('Order ID: $orderId');
 
       /// 3️⃣ Insert order items
       final orderItems = cart.map((item) {
@@ -151,19 +163,25 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       }).toList();
 
       await supabase.from('order_items').insert(orderItems);
+      debugPrint('Inserted ${orderItems.length} order items');
 
       /// 4️⃣ Fetch full order with items
       final orderWithItems = await supabase
           .from('orders')
           .select('*, order_items(*)')
           .eq('id', orderId)
-          .single();
+          .maybeSingle();
+
+      debugPrint('Full order fetched: $orderWithItems');
 
       /// 5️⃣ Clear cart AFTER everything succeeds
       ref.read(cartProvider.notifier).clearCart();
+      debugPrint('Cart cleared');
 
-      return orderWithItems;
-    } catch (e) {
+      return orderWithItems ?? insertedOrder;
+    } catch (e, st) {
+      debugPrint('ERROR in placeOrder(): $e');
+      debugPrint('$st');
       throw Exception('Failed to create order: $e');
     }
   }
