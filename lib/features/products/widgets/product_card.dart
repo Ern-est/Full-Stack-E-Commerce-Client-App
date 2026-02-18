@@ -47,7 +47,7 @@ class ProductCard extends StatelessWidget {
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   Text(
-                    'Ksh ${product.displayPrice}',
+                    'Ksh ${product.hasDiscount ? product.finalPrice : product.price}',
                   ), // ✅ Dollar replaced with Ksh
                 ],
               ),

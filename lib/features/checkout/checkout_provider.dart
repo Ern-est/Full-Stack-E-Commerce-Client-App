@@ -129,8 +129,9 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
             'client_id': clientId,
             'total_amount': cart.fold<double>(
               0,
-              (sum, item) => sum + (item.product.displayPrice * item.quantity),
+              (sum, item) => sum + (item.product.finalPrice * item.quantity),
             ),
+
             'payment_method': state.paymentMethod,
             'payment_status': 'pending',
             'delivery_address': state.address,
@@ -155,8 +156,8 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
           'order_id': orderId,
           'product_id': item.product.id,
           'quantity': item.quantity,
-          'unit_price': item.product.displayPrice,
-          'total_price': item.product.displayPrice * item.quantity,
+          'unit_price': item.product.finalPrice,
+          'total_price': item.product.finalPrice * item.quantity,
           'variant': item.selectedVariant,
           'created_at': DateTime.now().toIso8601String(),
         };

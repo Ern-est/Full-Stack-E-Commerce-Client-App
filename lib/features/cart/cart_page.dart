@@ -10,10 +10,10 @@ class CartPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final cart = ref.watch(cartProvider);
 
-    // ✅ Calculate total price dynamically
+    // ✅ Always use finalPrice (discount-aware)
     final totalPrice = cart.fold<double>(
       0,
-      (sum, item) => sum + (item.product.displayPrice * item.quantity),
+      (sum, item) => sum + (item.product.finalPrice * item.quantity),
     );
 
     return Scaffold(
@@ -32,6 +32,8 @@ class CartPage extends ConsumerWidget {
                     itemCount: cart.length,
                     itemBuilder: (context, index) {
                       final item = cart[index];
+                      final product = item.product;
+
                       return Card(
                         color: Colors.grey[900],
                         margin: const EdgeInsets.symmetric(
@@ -39,15 +41,15 @@ class CartPage extends ConsumerWidget {
                           vertical: 8,
                         ),
                         child: ListTile(
-                          leading: item.product.mainImage != null
+                          leading: product.mainImage != null
                               ? Image.network(
-                                  item.product.mainImage!,
+                                  product.mainImage!,
                                   width: 60,
                                   fit: BoxFit.cover,
                                 )
                               : const Icon(Icons.image, color: Colors.white),
                           title: Text(
-                            item.product.name,
+                            product.name,
                             style: const TextStyle(color: Colors.white),
                           ),
                           subtitle: Column(
@@ -57,12 +59,30 @@ class CartPage extends ConsumerWidget {
                                 'Variant: ${item.selectedVariant}',
                                 style: const TextStyle(color: Colors.white70),
                               ),
-                              Text(
-                                'Price: Ksh ${item.product.displayPrice.toStringAsFixed(2)}',
-                                style: const TextStyle(
-                                  color: Colors.greenAccent,
+
+                              /// 🔥 PRICE DISPLAY WITH DISCOUNT SUPPORT
+                              if (product.hasDiscount) ...[
+                                Text(
+                                  'Ksh ${product.finalPrice.toStringAsFixed(2)}',
+                                  style: const TextStyle(
+                                    color: Colors.greenAccent,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                              ),
+                                Text(
+                                  'Ksh ${product.price.toStringAsFixed(2)}',
+                                  style: const TextStyle(
+                                    color: Colors.grey,
+                                    decoration: TextDecoration.lineThrough,
+                                  ),
+                                ),
+                              ] else
+                                Text(
+                                  'Ksh ${product.price.toStringAsFixed(2)}',
+                                  style: const TextStyle(
+                                    color: Colors.greenAccent,
+                                  ),
+                                ),
                             ],
                           ),
                           trailing: SizedBox(
@@ -80,7 +100,7 @@ class CartPage extends ConsumerWidget {
                                       ref
                                           .read(cartProvider.notifier)
                                           .addToCart(
-                                            item.product,
+                                            product,
                                             -1,
                                             item.selectedVariant,
                                           );
@@ -88,7 +108,7 @@ class CartPage extends ConsumerWidget {
                                       ref
                                           .read(cartProvider.notifier)
                                           .removeFromCart(
-                                            item.product.id,
+                                            product.id,
                                             item.selectedVariant,
                                           );
                                     }
@@ -107,7 +127,7 @@ class CartPage extends ConsumerWidget {
                                     ref
                                         .read(cartProvider.notifier)
                                         .addToCart(
-                                          item.product,
+                                          product,
                                           1,
                                           item.selectedVariant,
                                         );
@@ -121,6 +141,8 @@ class CartPage extends ConsumerWidget {
                     },
                   ),
                 ),
+
+                /// 🔥 TOTAL SECTION
                 Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,

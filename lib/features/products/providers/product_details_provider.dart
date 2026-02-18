@@ -10,7 +10,7 @@ final productDetailsProvider = FutureProvider.family<Product, String>((
 
   // 1️⃣ Fetch product
   final productMap = await supabase
-      .from('products')
+      .from('products_with_discount')
       .select()
       .eq('id', productId)
       .single();

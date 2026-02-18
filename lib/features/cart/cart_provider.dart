@@ -29,7 +29,6 @@ class CartItem {
 class CartNotifier extends StateNotifier<List<CartItem>> {
   CartNotifier() : super([]);
 
-  /// Add product to cart or update quantity if already exists
   void addToCart(Product product, int quantityChange, String variant) {
     final index = state.indexWhere(
       (item) =>
@@ -43,7 +42,6 @@ class CartNotifier extends StateNotifier<List<CartItem>> {
       if (newQuantity <= 0) {
         removeFromCart(product.id, variant);
       } else {
-        // ✅ Create new state list to trigger rebuild
         final newState = [...state];
         newState[index] = updatedItem.copyWith(quantity: newQuantity);
         state = newState;
@@ -60,7 +58,6 @@ class CartNotifier extends StateNotifier<List<CartItem>> {
     }
   }
 
-  /// Remove a specific product-variant from cart
   void removeFromCart(String productId, String variant) {
     state = state
         .where(
@@ -70,18 +67,16 @@ class CartNotifier extends StateNotifier<List<CartItem>> {
         .toList();
   }
 
-  /// Clear the entire cart
   void clearCart() => state = [];
 
-  /// Calculate total price
+  /// ✅ DISCOUNT-AWARE TOTAL
   double get totalPrice {
     return state.fold(
       0,
-      (sum, item) => sum + item.product.displayPrice * item.quantity,
+      (sum, item) => sum + item.product.finalPrice * item.quantity,
     );
   }
 
-  /// Calculate total quantity of items in cart
   int get totalItems {
     return state.fold(0, (sum, item) => sum + item.quantity);
   }

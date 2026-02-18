@@ -76,7 +76,7 @@ class _PaymentSelectionState extends ConsumerState<PaymentSelection> {
 
     final totalAmount = cart.fold<double>(
       0,
-      (sum, item) => sum + (item.product.displayPrice * item.quantity),
+      (sum, item) => sum + (item.product.finalPrice * item.quantity),
     );
 
     final phoneInput = await showPhoneDialog(totalAmount);
@@ -273,7 +273,7 @@ class _PaymentSelectionState extends ConsumerState<PaymentSelection> {
 
     final totalAmount = cart.fold<double>(
       0,
-      (sum, item) => sum + (item.product.displayPrice * item.quantity),
+      (sum, item) => sum + (item.product.finalPrice * item.quantity),
     );
 
     final bool isCartEmpty = cart.isEmpty;

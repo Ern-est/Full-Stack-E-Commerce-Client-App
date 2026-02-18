@@ -114,14 +114,31 @@ class _ProductDetailsPageState extends ConsumerState<ProductDetailsPage> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  'Ksh ${product.displayPrice}',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green,
+                if (product.hasDiscount) ...[
+                  Text(
+                    'Ksh ${product.finalPrice.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
                   ),
-                ),
+                  Text(
+                    'Ksh ${product.price.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      decoration: TextDecoration.lineThrough,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ] else
+                  Text(
+                    'Ksh ${product.price.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
+                  ),
 
                 const SizedBox(height: 16),
 
@@ -416,7 +433,7 @@ class _ProductDetailsPageState extends ConsumerState<ProductDetailsPage> {
                                           ),
                                           const SizedBox(height: 4),
                                           Text(
-                                            'Ksh ${p.displayPrice}',
+                                            'Ksh ${product.hasDiscount ? product.finalPrice : product.price}',
                                             style: const TextStyle(
                                               fontWeight: FontWeight.bold,
                                             ),
