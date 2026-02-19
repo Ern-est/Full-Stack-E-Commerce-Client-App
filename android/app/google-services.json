@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "433640086598",
+    "project_id": "admin-panel-fe7d1",
+    "storage_bucket": "admin-panel-fe7d1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:433640086598:android:8aa84e2efee6a5453f7e47",
+        "android_client_info": {
+          "package_name": "com.yourcompany.adminpanel"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAVY1z299rxekmbR2GFUmbrZMDKBTsLduQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

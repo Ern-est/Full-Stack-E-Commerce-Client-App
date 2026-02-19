@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:full_stack_e_commerce_app/features/banners/banner_section.dart';
 import 'package:full_stack_e_commerce_app/features/categories/providers/subcategories_provider.dart';
+import 'package:full_stack_e_commerce_app/features/home/notifications_provider.dart';
+import 'package:full_stack_e_commerce_app/features/home/sections/notifications_page.dart';
 import '../categories/providers/categories_provider.dart';
 import '../categories/models/category.dart';
 import '../categories/models/subcategory.dart';
@@ -22,7 +24,6 @@ class HomePage extends ConsumerStatefulWidget {
 
 class _HomePageState extends ConsumerState<HomePage> {
   int index = 0;
-
   Category? selectedCategory;
   SubCategory? selectedSubCategory;
 
@@ -45,6 +46,9 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   Widget _buildShopPage(BuildContext context) {
     final categoriesAsync = ref.watch(categoriesProvider);
+    final notifications = ref.watch(
+      notificationsProvider,
+    ); // WATCH notifications
 
     return SingleChildScrollView(
       child: Padding(
@@ -52,10 +56,66 @@ class _HomePageState extends ConsumerState<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Shop',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            // Shop title with Search & Notifications
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Shop',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+                Row(
+                  children: [
+                    IconButton(
+                      onPressed: () {
+                        // TODO: Open search later
+                      },
+                      icon: const Icon(Icons.search, color: Colors.white),
+                    ),
+                    Stack(
+                      children: [
+                        IconButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const NotificationsPage(),
+                              ),
+                            );
+                          },
+                          icon: const Icon(
+                            Icons.notifications,
+                            color: Colors.white,
+                          ),
+                        ),
+                        if (notifications.isNotEmpty)
+                          Positioned(
+                            right: 6,
+                            top: 6,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(
+                                color: Colors.redAccent,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Text(
+                                '${notifications.length}', // dynamic badge
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
             ),
+
+            const SizedBox(height: 16),
             const BannersSection(),
             const SizedBox(height: 16),
 
@@ -114,7 +174,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             onTap: () {
               setState(() {
                 selectedCategory = cat;
-                selectedSubCategory = null; // reset subcategory selection
+                selectedSubCategory = null;
               });
             },
             child: Container(
@@ -164,7 +224,6 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   Widget _buildProductsGrid() {
     final subId = selectedSubCategory?.id;
-
     final productsAsync = ref.watch(productsProvider(subId));
 
     return productsAsync.when(
