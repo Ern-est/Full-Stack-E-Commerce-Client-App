@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/products_provider.dart';
+import '../models/products_params.dart';
 import '../widgets/product_card.dart';
 
 class ProductsGridPage extends ConsumerWidget {
@@ -10,7 +11,9 @@ class ProductsGridPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final productsAsync = ref.watch(productsProvider(subcategoryId));
+    final productsAsync = ref.watch(
+      productsProvider(ProductsParams(subId: subcategoryId, search: '')),
+    );
 
     return Scaffold(
       appBar: AppBar(title: const Text('Products')),
@@ -18,19 +21,20 @@ class ProductsGridPage extends ConsumerWidget {
         padding: const EdgeInsets.all(16),
         child: productsAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (err, _) => Text('Error: $err'),
+          error: (err, _) => Center(child: Text('Error: $err')),
           data: (products) {
-            if (products.isEmpty)
+            if (products.isEmpty) {
               return const Center(child: Text('No products found'));
+            }
 
             return GridView.builder(
+              itemCount: products.length,
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
                 mainAxisSpacing: 16,
                 crossAxisSpacing: 16,
                 childAspectRatio: 0.7,
               ),
-              itemCount: products.length,
               itemBuilder: (_, i) => ProductCard(product: products[i]),
             );
           },

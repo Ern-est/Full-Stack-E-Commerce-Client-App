@@ -2,23 +2,29 @@ class Product {
   final String id;
   final String name;
   final String? description;
+
   final double price; // original price
-  final double finalPrice; // discounted price (from view)
+  final double finalPrice; // discounted price
+  final int quantity;
+
   final String? appliedDiscountType;
   final double? appliedDiscountValue;
+
   final String? mainImage;
   final String? subcategoryId;
   final String? categoryId;
+
   final List<String> images;
   final bool inStock;
   final List<String> variants;
 
-  Product({
+  const Product({
     required this.id,
     required this.name,
     this.description,
     required this.price,
     required this.finalPrice,
+    required this.quantity,
     this.appliedDiscountType,
     this.appliedDiscountValue,
     this.mainImage,
@@ -31,31 +37,45 @@ class Product {
 
   bool get hasDiscount => finalPrice < price;
 
-  factory Product.fromMap(Map<String, dynamic> map, {List<String>? variants}) {
+  double get discountPercentage {
+    if (!hasDiscount) return 0;
+    return ((price - finalPrice) / price) * 100;
+  }
+
+  factory Product.fromMap(Map<String, dynamic> map) {
+    final price = double.tryParse(map['price']?.toString() ?? '') ?? 0;
+    final finalPrice =
+        double.tryParse(map['final_price']?.toString() ?? '') ?? price;
+
+    final quantity = map['quantity'] is int
+        ? map['quantity'] as int
+        : int.tryParse(map['quantity']?.toString() ?? '') ?? 0;
+
+    final images = [
+      map['main_image'],
+      map['image2'],
+      map['image3'],
+      map['image4'],
+      map['image5'],
+    ].whereType<String>().where((e) => e.isNotEmpty).toList();
+
     return Product(
-      id: map['id'] as String,
-      name: map['name'] as String,
-      description: map['description'] as String?,
-      price: double.parse(map['price'].toString()),
-      finalPrice: map['final_price'] != null
-          ? double.parse(map['final_price'].toString())
-          : double.parse(map['price'].toString()),
-      appliedDiscountType: map['applied_discount_type'] as String?,
+      id: map['id']?.toString() ?? '',
+      name: map['name']?.toString() ?? '',
+      description: map['description']?.toString(),
+      price: price,
+      finalPrice: finalPrice,
+      quantity: quantity,
+      appliedDiscountType: map['applied_discount_type']?.toString(),
       appliedDiscountValue: map['applied_discount_value'] != null
-          ? double.parse(map['applied_discount_value'].toString())
+          ? double.tryParse(map['applied_discount_value'].toString())
           : null,
-      mainImage: map['main_image'] as String?,
-      subcategoryId: map['subcategory_id'] as String?,
-      categoryId: map['category_id'] as String?,
-      images: [
-        map['main_image'],
-        map['image2'],
-        map['image3'],
-        map['image4'],
-        map['image5'],
-      ].whereType<String>().toList(),
-      inStock: (map['quantity'] as int?) != null && map['quantity'] > 0,
-      variants: variants ?? ['Default'],
+      mainImage: map['main_image']?.toString(),
+      subcategoryId: map['subcategory_id']?.toString(),
+      categoryId: map['category_id']?.toString(),
+      images: images,
+      inStock: quantity > 0,
+      variants: const ['Default'], // can expand later
     );
   }
 }
