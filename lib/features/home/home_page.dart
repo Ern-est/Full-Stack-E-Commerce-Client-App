@@ -15,6 +15,7 @@ import '../cart/cart_page.dart';
 import '../orders/orders_page.dart';
 import '../profile/pages/profile_page.dart';
 import '../../core/app_scaffold.dart';
+import '../auth/providers/auth_provider.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -64,14 +65,16 @@ class _HomePageState extends ConsumerState<HomePage> {
   Widget _buildShopPage(BuildContext context) {
     final categoriesAsync = ref.watch(categoriesProvider);
     final notifications = ref.watch(notificationsProvider);
-
+    final user = ref.watch(authStateProvider);
+    final username = user?.userMetadata?['name'] ?? 'User';
     return SingleChildScrollView(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildTopBar(context, notifications),
+            // ✅ Greeting + Notification + Search
+            _buildTopBar(context, notifications, username),
 
             const SizedBox(height: 16),
             const BannersSection(),
@@ -153,35 +156,33 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  Widget _buildTopBar(BuildContext context, List notifications) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  Widget _buildTopBar(
+    BuildContext context,
+    List notifications,
+    String username,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Shop',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-        ),
+        // Greeting + Notification
         Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            SizedBox(
-              width: 200,
-              child: TextField(
-                controller: searchController,
-                onChanged: (value) => searchQuery.value = value,
-                decoration: InputDecoration(
-                  hintText: 'Search products...',
-                  prefixIcon: const Icon(Icons.search),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
+            Text(
+              'Hi, $username 👋',
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF4B3C2F), // Gold-ish luxury
               ),
             ),
-            const SizedBox(width: 12),
             Stack(
               children: [
                 IconButton(
-                  icon: const Icon(Icons.notifications),
+                  icon: const Icon(
+                    Icons.notifications,
+                    color: Color(0xFF4B3C2F),
+                  ),
                   onPressed: () {
                     Navigator.push(
                       context,
@@ -197,8 +198,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                     top: 6,
                     child: Container(
                       padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: Colors.red,
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade700,
                         shape: BoxShape.circle,
                       ),
                       child: Text(
@@ -213,6 +214,22 @@ class _HomePageState extends ConsumerState<HomePage> {
               ],
             ),
           ],
+        ),
+        const SizedBox(height: 12),
+        // Full-width Search bar
+        TextField(
+          controller: searchController,
+          onChanged: (value) => searchQuery.value = value,
+          decoration: InputDecoration(
+            hintText: 'Search products...',
+            prefixIcon: const Icon(Icons.search),
+            filled: true,
+            fillColor: const Color(0xFFFFF9F0), // Ivory background
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide.none,
+            ),
+          ),
         ),
       ],
     );
@@ -240,10 +257,20 @@ class _HomePageState extends ConsumerState<HomePage> {
               width: 140,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: isSelected ? Colors.blue : const Color(0xFF1E1E1E),
+                color: isSelected
+                    ? const Color(0xFFD4AF37)
+                    : const Color(0xFFFFF9F0), // Gold vs Ivory
                 borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFD4AF37), width: 1.5),
               ),
-              child: Text(cat.name, textAlign: TextAlign.center),
+              child: Text(
+                cat.name,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : const Color(0xFF4B3C2F),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           );
         },
@@ -272,10 +299,20 @@ class _HomePageState extends ConsumerState<HomePage> {
               width: 120,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: isSelected ? Colors.blueAccent : const Color(0xFF2A2A2A),
+                color: isSelected
+                    ? const Color(0xFFD4AF37)
+                    : const Color(0xFFFFF9F0),
                 borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFD4AF37), width: 1),
               ),
-              child: Text(sub.name, textAlign: TextAlign.center),
+              child: Text(
+                sub.name,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : const Color(0xFF4B3C2F),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           );
         },

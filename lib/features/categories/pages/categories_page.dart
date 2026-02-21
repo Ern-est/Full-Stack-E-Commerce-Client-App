@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:full_stack_e_commerce_app/features/categories/pages/subcategories_page.dart';
+import 'package:full_stack_e_commerce_app/core/theme.dart';
 import '../../../core/responsive.dart';
 import '../providers/categories_provider.dart';
 import '../widgets/category_card.dart';
 import '../models/category.dart';
+import '../pages/subcategories_page.dart';
 
 class CategoriesSection extends ConsumerWidget {
   const CategoriesSection({super.key});
@@ -18,15 +19,17 @@ class CategoriesSection extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Categories',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            style: AppTheme.luxuryTheme.textTheme.headlineMedium,
           ),
           const SizedBox(height: 12),
-
           categoriesAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (err, _) => Text('Error: $err'),
+            error: (err, _) => Text(
+              'Error: $err',
+              style: TextStyle(color: AppTheme.primaryText),
+            ),
             data: (categories) => _buildCategories(context, categories),
           ),
         ],
@@ -38,7 +41,7 @@ class CategoriesSection extends ConsumerWidget {
     final isDesktop = Responsive.isDesktop(context);
 
     return SizedBox(
-      height: 90,
+      height: 100,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -48,7 +51,7 @@ class CategoriesSection extends ConsumerWidget {
           final category = categories[i];
 
           return SizedBox(
-            width: isDesktop ? 220 : 140, // wider on desktop
+            width: isDesktop ? 220 : 150,
             child: CategoryCard(
               category: category,
               onTap: () {

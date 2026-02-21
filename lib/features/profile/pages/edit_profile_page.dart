@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:full_stack_e_commerce_app/core/theme.dart';
 import 'package:full_stack_e_commerce_app/features/profile/providers/client_profile_provider.dart';
-
 import '../../auth/providers/auth_provider.dart';
 
 class EditProfilePage extends ConsumerStatefulWidget {
@@ -54,7 +54,6 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
     }
 
     try {
-      // Perform the update without storing the result
       await supabase
           .from('clients')
           .update({
@@ -66,7 +65,6 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
           .select()
           .single();
 
-      // Refresh provider to reflect updated data
       ref.invalidate(clientProfileProvider);
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -86,7 +84,12 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit Profile')),
+      appBar: AppBar(
+        title: const Text('Edit Profile'),
+        backgroundColor: AppTheme.ivory,
+        elevation: 0,
+      ),
+      backgroundColor: AppTheme.ivory,
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -117,10 +120,23 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.gold,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
                   onPressed: _isLoading ? null : _updateProfile,
                   child: _isLoading
-                      ? const CircularProgressIndicator()
-                      : const Text('Save Changes'),
+                      ? const CircularProgressIndicator(
+                          color: AppTheme.primaryText,
+                        )
+                      : const Text(
+                          'Save Changes',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                 ),
               ),
             ],

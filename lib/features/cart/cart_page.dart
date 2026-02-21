@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:full_stack_e_commerce_app/features/cart/cart_provider.dart';
+import 'package:full_stack_e_commerce_app/core/theme.dart';
 import 'package:full_stack_e_commerce_app/features/checkout/checkout_page.dart';
+import '../cart/cart_provider.dart';
 
 class CartPage extends ConsumerWidget {
   const CartPage({super.key});
@@ -10,19 +11,24 @@ class CartPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final cart = ref.watch(cartProvider);
 
-    // ✅ Always use finalPrice (discount-aware)
     final totalPrice = cart.fold<double>(
       0,
       (sum, item) => sum + (item.product.finalPrice * item.quantity),
     );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Cart')),
+      appBar: AppBar(
+        title: const Text('Cart'),
+        backgroundColor: AppTheme.ivory,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: AppTheme.primaryText),
+        titleTextStyle: AppTheme.luxuryTheme.textTheme.titleLarge,
+      ),
       body: cart.isEmpty
-          ? const Center(
+          ? Center(
               child: Text(
                 'Your cart is empty',
-                style: TextStyle(color: Colors.white),
+                style: TextStyle(color: AppTheme.secondaryText, fontSize: 16),
               ),
             )
           : Column(
@@ -30,49 +36,81 @@ class CartPage extends ConsumerWidget {
                 Expanded(
                   child: ListView.builder(
                     itemCount: cart.length,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
                     itemBuilder: (context, index) {
                       final item = cart[index];
                       final product = item.product;
 
-                      return Card(
-                        color: Colors.grey[900],
+                      return Container(
                         margin: const EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 8,
                         ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.pureWhite,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: AppTheme.goldTint,
+                            width: 1,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 6,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
                         child: ListTile(
-                          leading: product.mainImage != null
-                              ? Image.network(
-                                  product.mainImage!,
-                                  width: 60,
-                                  fit: BoxFit.cover,
-                                )
-                              : const Icon(Icons.image, color: Colors.white),
+                          contentPadding: const EdgeInsets.all(12),
+                          leading: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: product.mainImage != null
+                                ? Image.network(
+                                    product.mainImage!,
+                                    width: 60,
+                                    height: 60,
+                                    fit: BoxFit.cover,
+                                  )
+                                : const Icon(
+                                    Icons.image,
+                                    size: 60,
+                                    color: Colors.grey,
+                                  ),
+                          ),
                           title: Text(
                             product.name,
-                            style: const TextStyle(color: Colors.white),
+                            style: const TextStyle(
+                              color: AppTheme.primaryText,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
                           ),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              const SizedBox(height: 4),
                               Text(
                                 'Variant: ${item.selectedVariant}',
-                                style: const TextStyle(color: Colors.white70),
+                                style: const TextStyle(
+                                  color: AppTheme.secondaryText,
+                                  fontSize: 14,
+                                ),
                               ),
-
-                              /// 🔥 PRICE DISPLAY WITH DISCOUNT SUPPORT
+                              const SizedBox(height: 4),
                               if (product.hasDiscount) ...[
                                 Text(
                                   'Ksh ${product.finalPrice.toStringAsFixed(2)}',
                                   style: const TextStyle(
-                                    color: Colors.greenAccent,
+                                    color: AppTheme.goldDark,
                                     fontWeight: FontWeight.bold,
+                                    fontSize: 15,
                                   ),
                                 ),
                                 Text(
                                   'Ksh ${product.price.toStringAsFixed(2)}',
                                   style: const TextStyle(
-                                    color: Colors.grey,
+                                    color: AppTheme.secondaryText,
                                     decoration: TextDecoration.lineThrough,
                                   ),
                                 ),
@@ -80,7 +118,9 @@ class CartPage extends ConsumerWidget {
                                 Text(
                                   'Ksh ${product.price.toStringAsFixed(2)}',
                                   style: const TextStyle(
-                                    color: Colors.greenAccent,
+                                    color: AppTheme.goldDark,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
                                   ),
                                 ),
                             ],
@@ -93,7 +133,7 @@ class CartPage extends ConsumerWidget {
                                 IconButton(
                                   icon: const Icon(
                                     Icons.remove,
-                                    color: Colors.white,
+                                    color: AppTheme.primaryText,
                                   ),
                                   onPressed: () {
                                     if (item.quantity > 1) {
@@ -116,12 +156,15 @@ class CartPage extends ConsumerWidget {
                                 ),
                                 Text(
                                   '${item.quantity}',
-                                  style: const TextStyle(color: Colors.white),
+                                  style: const TextStyle(
+                                    color: AppTheme.primaryText,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                                 IconButton(
                                   icon: const Icon(
                                     Icons.add,
-                                    color: Colors.white,
+                                    color: AppTheme.primaryText,
                                   ),
                                   onPressed: () {
                                     ref
@@ -142,22 +185,29 @@ class CartPage extends ConsumerWidget {
                   ),
                 ),
 
-                /// 🔥 TOTAL SECTION
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
+                /// Total & Checkout Section
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.ivory,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(24),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 8,
+                        offset: const Offset(0, -3),
+                      ),
+                    ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
                         'Total: Ksh ${totalPrice.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
+                        style: AppTheme.luxuryTheme.textTheme.headlineMedium!
+                            .copyWith(fontWeight: FontWeight.bold),
                         textAlign: TextAlign.right,
                       ),
                       const SizedBox(height: 12),
@@ -171,12 +221,18 @@ class CartPage extends ConsumerWidget {
                           );
                         },
                         style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.gold,
+                          foregroundColor: AppTheme.primaryText,
                           padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          textStyle: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                        child: const Text(
-                          'Checkout',
-                          style: TextStyle(fontSize: 18),
-                        ),
+                        child: const Text('Checkout'),
                       ),
                     ],
                   ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:full_stack_e_commerce_app/core/theme.dart';
 
 class OrderStatusBadge extends StatelessWidget {
   final String status;
@@ -8,24 +9,32 @@ class OrderStatusBadge extends StatelessWidget {
   Color _getColor() {
     switch (status) {
       case 'pending':
-        return Colors.orange;
-      case 'preparing':
-        return Colors.blue;
-      case 'out_for_delivery':
-        return Colors.purple;
+        return AppTheme.goldDark;
+      case 'processing':
+        return const Color(0xFF6C63FF); // custom luxury purple
+      case 'shipped':
+        return const Color(0xFF4A90E2); // custom luxury blue
       case 'delivered':
-        return Colors.green;
+        return const Color(0xFF3BB54A); // custom luxury green
       case 'cancelled':
-        return Colors.red;
+        return const Color(0xFFD32F2F); // custom red
       default:
-        return Colors.grey;
+        return AppTheme.secondaryText;
     }
   }
 
   String _getLabel() {
     switch (status) {
-      case 'out_for_delivery':
-        return 'Out for Delivery';
+      case 'pending':
+        return 'Pending';
+      case 'processing':
+        return 'Processing';
+      case 'shipped':
+        return 'Shipped';
+      case 'delivered':
+        return 'Delivered';
+      case 'cancelled':
+        return 'Cancelled';
       default:
         return status[0].toUpperCase() + status.substring(1);
     }
@@ -33,15 +42,20 @@ class OrderStatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final color = _getColor();
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       decoration: BoxDecoration(
-        color: _getColor().withOpacity(0.2),
+        color: color.withOpacity(0.15),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
         _getLabel(),
-        style: TextStyle(color: _getColor(), fontWeight: FontWeight.bold),
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.bold,
+          fontSize: 12,
+        ),
       ),
     );
   }

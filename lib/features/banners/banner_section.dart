@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:full_stack_e_commerce_app/core/theme.dart';
 import 'package:full_stack_e_commerce_app/features/banners/banner.dart';
 import 'package:full_stack_e_commerce_app/features/banners/banner_provider.dart';
 
@@ -15,22 +16,19 @@ class _BannersSectionState extends ConsumerState<BannersSection> {
   int _currentIndex = 0;
   final PageController _pageController = PageController(viewportFraction: 0.85);
   Timer? _autoScrollTimer;
-  bool _autoScrollStarted = false; // 👈 important
+  bool _autoScrollStarted = false;
 
   void _startAutoScroll(int bannerCount) {
     _autoScrollTimer?.cancel();
-
     _autoScrollTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
       if (!_pageController.hasClients || bannerCount == 0) return;
 
       final nextPage = (_currentIndex + 1) % bannerCount;
-
       _pageController.animateToPage(
         nextPage,
         duration: const Duration(milliseconds: 500),
         curve: Curves.easeInOut,
       );
-
       _currentIndex = nextPage;
     });
   }
@@ -47,16 +45,20 @@ class _BannersSectionState extends ConsumerState<BannersSection> {
     final bannersAsync = ref.watch(bannersProvider);
 
     return SizedBox(
-      height: 200,
+      height: 220,
       child: bannersAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Center(child: Text('Error: $err')),
+        error: (err, _) => Center(
+          child: Text(
+            'Error: $err',
+            style: TextStyle(color: AppTheme.primaryText),
+          ),
+        ),
         data: (banners) {
           if (banners.isEmpty) {
             return const Center(child: Text('No banners found'));
           }
 
-          // ✅ start auto-scroll ONCE after data loads
           if (!_autoScrollStarted) {
             _autoScrollStarted = true;
             WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -70,10 +72,29 @@ class _BannersSectionState extends ConsumerState<BannersSection> {
                 child: PageView.builder(
                   controller: _pageController,
                   itemCount: banners.length,
-                  onPageChanged: (index) {
-                    setState(() => _currentIndex = index);
+                  onPageChanged: (index) =>
+                      setState(() => _currentIndex = index),
+                  itemBuilder: (_, i) {
+                    return AnimatedBuilder(
+                      animation: _pageController,
+                      builder: (context, child) {
+                        double scale = 1.0;
+                        if (_pageController.position.haveDimensions) {
+                          double page =
+                              _pageController.page ??
+                              _pageController.initialPage.toDouble();
+                          scale = (1 - (page - i).abs() * 0.15).clamp(
+                            0.85,
+                            1.0,
+                          );
+                        }
+                        return Transform.scale(
+                          scale: scale,
+                          child: _buildBannerCard(banners[i]),
+                        );
+                      },
+                    );
                   },
-                  itemBuilder: (context, i) => _buildBannerCard(banners[i]),
                 ),
               ),
               const SizedBox(height: 8),
@@ -98,10 +119,22 @@ class _BannersSectionState extends ConsumerState<BannersSection> {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: Image.network(
-                banner.imageUrl,
-                width: double.infinity,
-                fit: BoxFit.cover,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppTheme.pureWhite,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 6,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Image.network(
+                  banner.imageUrl,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
             if (banner.title != null && banner.title!.isNotEmpty)
@@ -115,17 +148,18 @@ class _BannersSectionState extends ConsumerState<BannersSection> {
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.5),
+                    color: Colors.black.withOpacity(0.5),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
                     banner.title!,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: AppTheme.ivory,
                       fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
                     ),
                   ),
                 ),
@@ -147,7 +181,7 @@ class _BannersSectionState extends ConsumerState<BannersSection> {
           width: _currentIndex == i ? 12 : 8,
           height: _currentIndex == i ? 12 : 8,
           decoration: BoxDecoration(
-            color: _currentIndex == i ? Colors.blueAccent : Colors.grey,
+            color: _currentIndex == i ? AppTheme.gold : AppTheme.divider,
             shape: BoxShape.circle,
           ),
         ),

@@ -20,7 +20,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   @override
   Widget build(BuildContext context) {
     return AuthForm(
-      title: 'Create Account',
+      title: 'CREATE ACCOUNT',
       actionText: _loading ? 'Registering...' : 'Register',
       onSubmit: () async {
         setState(() => _loading = true);
@@ -32,13 +32,17 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                 password: _passwordController.text,
                 name: _nameController.text.trim(),
               );
+
           if (user != null) {
-            // Riverpod auth state will automatically update
+            // Auth state auto updates
           }
         } catch (e) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(e.toString())));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(e.toString()),
+              backgroundColor: Colors.black,
+            ),
+          );
         } finally {
           setState(() => _loading = false);
         }
@@ -48,12 +52,12 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
           controller: _nameController,
           decoration: const InputDecoration(labelText: 'Full Name'),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         TextField(
           controller: _emailController,
           decoration: const InputDecoration(labelText: 'Email'),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         TextField(
           controller: _passwordController,
           decoration: const InputDecoration(labelText: 'Password'),

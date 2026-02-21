@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:full_stack_e_commerce_app/core/theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/app_scaffold.dart';
 import 'widgets/order_status_badge.dart';
@@ -20,9 +21,6 @@ class OrderConfirmationPage extends StatefulWidget {
 class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
   final supabase = Supabase.instance.client;
 
-  /// ==============================
-  /// CANCEL ORDER FUNCTION
-  /// ==============================
   Future<void> cancelOrder(String reason) async {
     await supabase
         .from('orders')
@@ -35,92 +33,105 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
         .eq('id', widget.orderId);
   }
 
-  /// ==============================
-  /// CANCEL DIALOG
-  /// ==============================
   void showCancelDialog() {
     final controller = TextEditingController();
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text("Cancel Order"),
+        backgroundColor: AppTheme.pureWhite,
+        title: Text(
+          "Cancel Order",
+          style: TextStyle(color: AppTheme.primaryText),
+        ),
         content: TextField(
           controller: controller,
           maxLines: 3,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             hintText: "Enter cancellation reason",
+            hintStyle: TextStyle(color: AppTheme.secondaryText),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Back"),
+            child: Text("Back", style: TextStyle(color: AppTheme.primaryText)),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.goldDark),
             onPressed: () async {
               if (controller.text.trim().isEmpty) return;
-
               await cancelOrder(controller.text.trim());
-
               Navigator.pop(context);
             },
-            child: const Text("Confirm Cancel"),
+            child: Text(
+              "Confirm Cancel",
+              style: TextStyle(color: AppTheme.pureWhite),
+            ),
           ),
         ],
       ),
     );
   }
 
-  /// ==============================
-  /// STEP TRACKER
-  /// ==============================
   int getCurrentStep(String status) {
     const statusOrder = ['pending', 'processing', 'shipped', 'delivered'];
     return statusOrder.indexOf(status);
   }
 
-  Widget buildTimeline(String status) {
-    if (status == 'cancelled') {
-      return Column(
-        children: const [
-          Icon(Icons.cancel, color: Colors.red, size: 50),
-          SizedBox(height: 10),
-          Text(
-            "This order was cancelled",
-            style: TextStyle(
-              color: Colors.red,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
-          ),
-        ],
-      );
-    }
-
+  Widget buildLuxuryTimeline(String status) {
     final steps = ['Pending', 'Processing', 'Shipped', 'Delivered'];
     final currentStep = getCurrentStep(status);
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: List.generate(steps.length, (index) {
-        final isActive = index <= currentStep && currentStep != -1;
+      children: List.generate(steps.length * 2 - 1, (index) {
+        // Odd indices are lines
+        if (index.isOdd) {
+          final lineIndex = (index / 2).floor();
+          final isActive = lineIndex < currentStep;
+          return Expanded(
+            child: Container(
+              height: 4,
+              color: isActive ? AppTheme.gold : AppTheme.divider,
+            ),
+          );
+        }
+
+        // Even indices are step circles
+        final stepIndex = (index / 2).floor();
+        final isActive = stepIndex <= currentStep && currentStep != -1;
 
         return Column(
           children: [
-            CircleAvatar(
-              radius: 14,
-              backgroundColor: isActive ? Colors.green : Colors.grey.shade700,
-              child: const Icon(Icons.check, size: 14, color: Colors.white),
+            Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                color: isActive ? AppTheme.gold : AppTheme.divider,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isActive ? AppTheme.goldDark : AppTheme.secondaryText,
+                  width: 2,
+                ),
+              ),
+              child: isActive
+                  ? const Icon(Icons.check, size: 14, color: Colors.black)
+                  : null,
             ),
             const SizedBox(height: 6),
-            Text(
-              steps[index],
-              style: TextStyle(
-                fontSize: 12,
-                color: isActive ? Colors.green : Colors.grey,
+            SizedBox(
+              width: 60,
+              child: Text(
+                steps[stepIndex],
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isActive
+                      ? AppTheme.primaryText
+                      : AppTheme.secondaryText,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
@@ -129,16 +140,22 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
     );
   }
 
-  /// ==============================
-  /// UI BUILD
-  /// ==============================
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
       currentIndex: 0,
       onNavTap: (_) {},
       body: Scaffold(
-        appBar: AppBar(title: const Text('Order Details')),
+        appBar: AppBar(
+          title: Text(
+            'Order Details',
+            style: TextStyle(color: AppTheme.primaryText),
+          ),
+          backgroundColor: AppTheme.ivory,
+          elevation: 0,
+          iconTheme: IconThemeData(color: AppTheme.primaryText),
+        ),
+        backgroundColor: AppTheme.ivory,
         body: StreamBuilder(
           stream: supabase
               .from('orders')
@@ -150,10 +167,8 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
             }
 
             final order = orderSnapshot.data!.first;
-
             final status = order['order_status'] ?? 'pending';
             final total = order['total_amount'] ?? 0;
-
             final cancelledBy = order['cancelled_by'];
             final cancelReason = order['cancel_reason'];
 
@@ -181,18 +196,14 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      /// STATUS BADGE
                       Center(child: OrderStatusBadge(status: status)),
                       const SizedBox(height: 20),
-
-                      /// TIMELINE
-                      buildTimeline(status),
+                      buildLuxuryTimeline(status),
                       const SizedBox(height: 20),
 
-                      /// CANCELLATION REASON
                       if (status == 'cancelled' && cancelReason != null)
                         Card(
-                          color: const Color(0xFF2A0000),
+                          color: const Color(0xFFFDECEA),
                           margin: const EdgeInsets.only(bottom: 20),
                           child: Padding(
                             padding: const EdgeInsets.all(12),
@@ -201,100 +212,102 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
                               children: [
                                 Text(
                                   "Cancelled by: ${cancelledBy ?? 'Unknown'}",
-                                  style: const TextStyle(
-                                    color: Colors.red,
+                                  style: TextStyle(
+                                    color: const Color(0xFFD32F2F),
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
                                   cancelReason,
-                                  style: const TextStyle(color: Colors.white),
+                                  style: TextStyle(color: AppTheme.primaryText),
                                 ),
                               ],
                             ),
                           ),
                         ),
 
-                      /// PAYMENT METHOD
                       Card(
-                        color: const Color(0xFF1E1E1E),
+                        color: AppTheme.pureWhite,
                         child: ListTile(
-                          leading: const Icon(
-                            Icons.payment,
-                            color: Colors.green,
-                          ),
-                          title: const Text(
+                          leading: Icon(Icons.payment, color: AppTheme.gold),
+                          title: Text(
                             'Payment Method',
-                            style: TextStyle(fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.primaryText,
+                            ),
                           ),
-                          subtitle: Text(widget.paymentMethod),
+                          subtitle: Text(
+                            widget.paymentMethod,
+                            style: TextStyle(color: AppTheme.secondaryText),
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 30),
 
-                      const Text(
+                      const SizedBox(height: 30),
+                      Text(
                         'Order Items',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: Theme.of(context).textTheme.headlineMedium,
                       ),
                       const SizedBox(height: 12),
 
-                      /// ORDER ITEMS
                       ...items.map(
                         (item) => Card(
-                          color: const Color(0xFF1E1E1E),
+                          color: AppTheme.pureWhite,
                           margin: const EdgeInsets.symmetric(vertical: 6),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                           child: ListTile(
                             title: Text(
                               item['product']?['name'] ?? 'Unknown Product',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.primaryText,
+                              ),
                             ),
-                            subtitle: Text('Qty: ${item['quantity']}'),
+                            subtitle: Text(
+                              'Qty: ${item['quantity']}',
+                              style: TextStyle(color: AppTheme.secondaryText),
+                            ),
                             trailing: Text(
-                              '\$${(item['total_price'] as num).toStringAsFixed(2)}',
+                              'Ksh ${(item['total_price'] as num).toStringAsFixed(2)}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.primaryText,
+                              ),
                             ),
                           ),
                         ),
                       ),
 
                       const SizedBox(height: 20),
-
-                      /// TOTAL
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
+                          Text(
                             'Total',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: Theme.of(context).textTheme.headlineMedium,
                           ),
                           Text(
-                            '\$${(total as num).toStringAsFixed(2)}',
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            'Ksh ${(total as num).toStringAsFixed(2)}',
+                            style: Theme.of(context).textTheme.headlineMedium,
                           ),
                         ],
                       ),
-
                       const SizedBox(height: 30),
 
-                      /// CANCEL BUTTON (ONLY IF PENDING)
                       if (status == 'pending')
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              backgroundColor: AppTheme.goldDark,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
                             ),
                             onPressed: showCancelDialog,
-                            child: const Text(
+                            child: Text(
                               "Cancel Order",
                               style: TextStyle(fontWeight: FontWeight.bold),
                             ),

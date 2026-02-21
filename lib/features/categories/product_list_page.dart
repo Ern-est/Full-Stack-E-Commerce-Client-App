@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:full_stack_e_commerce_app/core/theme.dart';
+import '../../../core/responsive.dart';
 import '../../core/app_scaffold.dart';
-import '../../core/responsive.dart';
 
 class ProductListPage extends StatelessWidget {
   final String subcategoryName;
@@ -17,10 +18,14 @@ class ProductListPage extends StatelessWidget {
       currentIndex: 0,
       onNavTap: (_) {},
       body: Scaffold(
-        appBar: AppBar(title: Text(subcategoryName)),
+        backgroundColor: AppTheme.ivory,
+        appBar: AppBar(
+          title: Text(subcategoryName),
+          backgroundColor: AppTheme.ivory,
+        ),
         body: GridView.builder(
           padding: const EdgeInsets.all(16),
-          itemCount: 12,
+          itemCount: 12, // placeholder
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: columns,
             crossAxisSpacing: 12,
@@ -29,31 +34,46 @@ class ProductListPage extends StatelessWidget {
           ),
           itemBuilder: (_, i) => Container(
             decoration: BoxDecoration(
-              color: const Color(0xFF1E1E1E),
-              borderRadius: BorderRadius.circular(12),
+              color: AppTheme.pureWhite,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: Container(
-                    decoration: const BoxDecoration(
-                      color: Colors.black26,
-                      borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.divider.withOpacity(0.3),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(16),
                       ),
                     ),
                     child: const Center(child: Icon(Icons.image, size: 40)),
                   ),
                 ),
-                const Padding(
-                  padding: EdgeInsets.all(8),
+                Padding(
+                  padding: const EdgeInsets.all(12),
                   child: Column(
-                    children: [
-                      Text('Product Name'),
-                      SizedBox(height: 4),
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
                       Text(
-                        'Ksh 99.99', // Updated currency symbol
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                        'Product Name',
+                        style: TextStyle(color: AppTheme.primaryText),
+                      ),
+                      SizedBox(height: 6),
+                      Text(
+                        'Ksh 99.99',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.gold,
+                        ),
                       ),
                     ],
                   ),

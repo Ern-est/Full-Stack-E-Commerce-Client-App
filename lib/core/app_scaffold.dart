@@ -17,19 +17,25 @@ class AppScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final backgroundColor = Theme.of(context).scaffoldBackgroundColor;
+
     if (Responsive.isDesktop(context)) {
       return Scaffold(
+        backgroundColor: backgroundColor,
         body: Row(
           children: [
             SideNav(currentIndex: currentIndex, onTap: onNavTap),
-            Expanded(child: body),
+            Expanded(
+              child: Container(color: backgroundColor, child: body),
+            ),
           ],
         ),
       );
     }
 
     return Scaffold(
-      body: body,
+      backgroundColor: backgroundColor,
+      body: Container(color: backgroundColor, child: body),
       bottomNavigationBar: Responsive.isMobile(context)
           ? BottomNav(currentIndex: currentIndex, onTap: onNavTap)
           : null,

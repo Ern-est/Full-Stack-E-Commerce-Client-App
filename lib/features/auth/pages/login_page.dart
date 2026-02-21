@@ -19,7 +19,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return AuthForm(
-      title: 'Welcome Back',
+      title: 'WELCOME BACK',
       actionText: _loading ? 'Logging in...' : 'Login',
       onSubmit: () async {
         setState(() => _loading = true);
@@ -30,13 +30,17 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 email: _emailController.text.trim(),
                 password: _passwordController.text,
               );
+
           if (user != null) {
-            // Auth state updates automatically
+            // Auth state auto updates
           }
         } catch (e) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(e.toString())));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(e.toString()),
+              backgroundColor: Colors.black,
+            ),
+          );
         } finally {
           setState(() => _loading = false);
         }
@@ -46,7 +50,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           controller: _emailController,
           decoration: const InputDecoration(labelText: 'Email'),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         TextField(
           controller: _passwordController,
           decoration: const InputDecoration(labelText: 'Password'),

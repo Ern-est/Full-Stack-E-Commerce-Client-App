@@ -20,6 +20,7 @@ class AuthForm extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDesktop = Responsive.isDesktop(context);
+    final theme = Theme.of(context);
 
     return Scaffold(
       body: Center(
@@ -28,21 +29,36 @@ class AuthForm extends StatelessWidget {
           padding: const EdgeInsets.all(24),
           margin: isDesktop ? null : const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: const Color(0xFF1E1E1E),
-            borderRadius: BorderRadius.circular(12),
+            color: theme.cardColor, // ✅ from AppTheme
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.4),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(title, style: const TextStyle(fontSize: 26)),
+              Text(
+                title,
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               const SizedBox(height: 24),
               ...fields,
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: onSubmit,
-                  child: Text(actionText),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    child: Text(actionText),
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
